@@ -1,0 +1,148 @@
+// ===== Pomodoro Quest — app.js (fixed) =====
+const $ = (s) => document.querySelector(s);
+
+// Elements
+const todayEl     = $("#today");
+const displayEl   = $("#display");
+const phaseLabel  = $("#phaseLabel");
+const startBtn    = $("#startBtn");   // was startBrtn
+const pauseBtn    = $("#pauseBtn");
+const resetBtn    = $("#resetBtn");
+const workLenEl   = $("#workLen");
+const breakLenEl  = $("#breakLen");   // was breakLenE1
+const xpTotalEl   = $("#xpTotal");
+const levelEl     = $("#level");
+const xpBarEl     = $("#xpBar");
+const sessionLog  = $("#sessionLog");
+
+// Date header
+todayEl.textContent = new Date().toLocaleDateString(undefined, {
+  weekday: "long", year: "numeric", month: "long", day: "numeric"
+});
+
+// Storage
+const KEYS = {
+  XP:  "pomo_xp_total",
+  LOG: "pomo_session_log" // array of {phase:'Work'|'Break', endedAt:number, duration:number}
+};
+const loadXP  = () => Number(localStorage.getItem(KEYS.XP) || 0);
+const saveXP  = (xp) => localStorage.setItem(KEYS.XP, String(xp));
+const loadLog = () => { try { return JSON.parse(localStorage.getItem(KEYS.LOG)) || []; } catch { return []; } };
+const saveLog = (arr) => localStorage.setItem(KEYS.LOG, JSON.stringify(arr)); // was stringfy
+
+// XP UI
+const levelFromXP = (xp) => Math.floor(xp / 100) + 1;
+function updateXPUI(){
+  const xp = loadXP();
+  xpTotalEl.textContent = xp;
+  levelEl.textContent = levelFromXP(xp);
+  xpBarEl.style.width = `${xp % 100}%`; // backticks
+}
+
+// Log UI
+function renderLog(){
+  const items = loadLog().slice().reverse().slice(0, 6);
+  sessionLog.innerHTML = "";
+  items.forEach(i => {
+    const li = document.createElement("li");
+    const when = new Date(i.endedAt).toLocaleString(); // was toLocalestring
+    li.innerHTML = `
+      <span>${i.phase} • ${formatSeconds(i.duration)}</span>
+      <time class="muted">${when}</time>
+    `;
+    sessionLog.appendChild(li);
+  });
+}
+
+// Timer state
+let phase = "Work";               // "Work" | "Break"
+let totalSec = 25 * 60;           // current phase seconds
+let remaining = totalSec;
+let intervalId = null;            // was intervalid
+let startedAt = null;
+
+// Helpers
+function formatSeconds(s){
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; // single line
+}
+
+function updateDisplay(){
+  displayEl.textContent = formatSeconds(remaining);
+  phaseLabel.textContent = phase; // was phaselabel
+}
+
+function setPhase(newPhase){
+  phase = newPhase;
+  const work = Math.max(1, Number(workLenEl.value  || 25)); // fixed refs
+  const brk  = Math.max(1, Number(breakLenEl.value || 5));
+  totalSec = (phase === "Work" ? work : brk) * 60;
+  remaining = totalSec;
+  updateDisplay();
+}
+
+// Start/Pause/Reset
+function startTimer(){
+  if (intervalId) return;           // already running
+  startedAt = Date.now();
+  intervalId = setInterval(tick, 1000);
+}
+
+function pauseTimer(){
+  if (!intervalId) return;
+  clearInterval(intervalId);
+  intervalId = null;
+}
+
+function resetTimer(){
+  pauseTimer();
+  setPhase(phase);                  // reload current phase length
+}
+
+// Tick
+function tick(){
+  if (remaining > 0){
+    remaining--;
+    updateDisplay();
+    return;
+  }
+
+  // Phase finished
+  pauseTimer();
+
+  // Log the session
+  const elapsed = totalSec; // we only end when it hits 0
+  const log = loadLog();
+  log.push({ phase, endedAt: Date.now(), duration: elapsed }); // was Date,now()
+  saveLog(log);
+  renderLog();
+
+  // Award XP only for Work
+  if (phase === "Work"){
+    saveXP(loadXP() + 10);
+    updateXPUI();
+  }
+
+  // Auto switch phase and continue
+  setPhase(phase === "Work" ? "Break" : "Work");
+  startTimer();
+}
+
+// Bindings
+startBtn.addEventListener("click", startTimer);
+pauseBtn.addEventListener("click", pauseTimer);
+resetBtn.addEventListener("click", resetTimer);
+
+// Reflect length changes when stopped
+[workLenEl, breakLenEl].forEach(inp => {
+  inp.addEventListener("change", () => {
+    if (!intervalId) setPhase(phase);
+  });
+});
+
+// Init
+setPhase("Work");
+updateXPUI();
+renderLog();
+updateDisplay();
