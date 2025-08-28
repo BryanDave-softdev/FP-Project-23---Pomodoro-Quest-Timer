@@ -4,7 +4,7 @@ A gamified Pomodoro timer that helps you focus on work sessions and take breaks 
 
 🌐 Live Demo
 
-👉 [Add your CodePen/Pages link here]
+👉 [https://codepen.io/Bryan-Dave-Hernandez/pen/zxvaWrx?editors=1010]
 
 ✨ Features
 
