@@ -18,7 +18,9 @@ Quest Log – see your last 6 sessions with timestamps
 
 Local Storage – progress and logs saved even after refresh
 
-🖼️ Screenshot
+# 🖼️ Screenshot
+![Pomodoro Quest Screenshot](pomodoro_quest.PNG)
+
 
 
 📖 Project Overview
